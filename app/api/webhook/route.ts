@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -68,33 +69,17 @@ export async function POST(req: Request) {
       - הטקסט בתוך הניתוח חייב להיות בעברית.
     `;
 
-    // החלפת הבלוק של Gemini בבלוק של Anthropic
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY!;
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: "Data to analyze:\n" + rawCaption }
-        ]
-      })
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: "Data to analyze:\n" + rawCaption }
+      ]
     });
 
-    const anthropicResult = await anthropicResponse.json();
-
-    if (!anthropicResponse.ok) {
-      console.error("Claude Direct Error:", anthropicResult);
-      throw new Error(`Claude API failed: ${anthropicResult.error?.message || anthropicResponse.statusText}`);
-    }
-
-    const aiResponse = anthropicResult.content[0].text;
+    const aiResponse = (message.content[0] as { type: string; text: string }).text;
     // 4. שליחה לטלגרם (Smiley Scout Bot)
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
