@@ -68,26 +68,33 @@ export async function POST(req: Request) {
       - הטקסט בתוך הניתוח חייב להיות בעברית.
     `;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${apiKey}`;
-
-    const geminiResponse = await fetch(geminiUrl, {
+    // החלפת הבלוק של Gemini בבלוק של Anthropic
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY!;
+    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicApiKey,
+        'anthropic-version': '2023-06-01'
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: systemPrompt + "\n\nData to analyze:\n" + rawCaption }] }]
-      }),
+        model: "claude-3-5-sonnet-20240620",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: "Data to analyze:\n" + rawCaption }
+        ]
+      })
     });
 
-    const geminiResult = await geminiResponse.json();
+    const anthropicResult = await anthropicResponse.json();
 
-    if (!geminiResponse.ok) {
-      console.error("Gemini Direct Error:", geminiResult);
-      throw new Error(`Gemini API failed: ${geminiResult.error?.message || geminiResponse.statusText}`);
+    if (!anthropicResponse.ok) {
+      console.error("Claude Direct Error:", anthropicResult);
+      throw new Error(`Claude API failed: ${anthropicResult.error?.message || anthropicResponse.statusText}`);
     }
 
-    const aiResponse = geminiResult.candidates[0].content.parts[0].text;
-
+    const aiResponse = anthropicResult.content[0].text;
     // 4. שליחה לטלגרם (Smiley Scout Bot)
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
