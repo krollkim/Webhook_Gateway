@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: Request) {
   try {
@@ -36,13 +35,7 @@ export async function POST(req: Request) {
       comments: winnerPost.commentsCount || 0
     };
 
-    // 3. הפעלת שכבת האינטליגנציה (Gemini AI / Nano Banana 2)
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" },
-      { apiVersion: 'v1' }
-    );
-
+    // 3. הפעלת שכבת האינטליגנציה (Gemini Direct HTTP)
     const systemPrompt = `
       Context:
       אתה האסטרטג הראשי של Smiley Solution - סטודיו לעיצוב ופיתוח High-end המתמחה ב-Editorial Minimalism ובביצועי קצה (GSAP). 
@@ -75,8 +68,25 @@ export async function POST(req: Request) {
       - הטקסט בתוך הניתוח חייב להיות בעברית.
     `;
 
-    const aiResult = await model.generateContent(systemPrompt);
-    const aiResponse = aiResult.response.text();
+    const apiKey = process.env.GEMINI_API_KEY;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const geminiResponse = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\nData to analyze:\n" + rawCaption }] }]
+      }),
+    });
+
+    const geminiResult = await geminiResponse.json();
+
+    if (!geminiResponse.ok) {
+      console.error("Gemini Direct Error:", geminiResult);
+      throw new Error(`Gemini API failed: ${geminiResult.error?.message || geminiResponse.statusText}`);
+    }
+
+    const aiResponse = geminiResult.candidates[0].content.parts[0].text;
 
     // 4. שליחה לטלגרם (Smiley Scout Bot)
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
