@@ -2,7 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
-const TOP_N = 6; // how many posts to send per run
+const TOP_N = 3; // keep low — parallel Claude calls must finish within Netlify timeout
 
 interface ApifyItem {
   id?:            string;
@@ -160,61 +160,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 'No valid items after filtering' }, { status: 200 });
     }
 
-    // 4. For each post: generate Nano Banana copy → send to Telegram
+    // 4. Process all posts in parallel — Claude + Telegram fire simultaneously
     step = 'process_posts';
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
-    const results: { postId: string; status: string; error?: string }[] = [];
 
-    for (const post of topPosts) {
-      const postId  = post.id!;
-      const postUrl = post.url!;
+    async function processPost(post: ApifyItem): Promise<{ postId: string; status: string; error?: string }> {
+      const postId   = post.id!;
+      const postUrl  = post.url!;
       const likes    = post.likesCount    || 0;
       const comments = post.commentsCount || 0;
       const caption  = post.caption       || 'No caption';
 
-      try {
-        // Generate Nano Banana formatted post
-        const message = await anthropic.messages.create({
-          model:      'claude-sonnet-4-5',
-          max_tokens: 512,
-          messages:   [{
-            role:    'user',
-            content: buildNanoBananaPrompt(caption, likes, comments),
-          }],
-        });
-        const formattedPost = (message.content[0] as { type: string; text: string }).text;
+      const message = await anthropic.messages.create({
+        model:      'claude-sonnet-4-5',
+        max_tokens: 512,
+        messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
+      });
+      const formattedPost = (message.content[0] as { type: string; text: string }).text;
 
-        // Send to Telegram
-        const telegramRes = await fetch(
-          `https://api.telegram.org/bot${botToken}/sendMessage`,
-          {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-              chat_id:    chatId,
-              text:       `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`,
-              parse_mode: 'Markdown',
-            }),
-          }
-        );
-
-        if (!telegramRes.ok) {
-          const tgErr = await telegramRes.json();
-          console.error(`[webhook] Telegram failed for post ${postId}:`, tgErr);
-          results.push({ postId, status: 'telegram_failed', error: JSON.stringify(tgErr) });
-          continue; // don't stop — move to next post
+      const telegramRes = await fetch(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            chat_id:    chatId,
+            text:       `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`,
+            parse_mode: 'Markdown',
+          }),
         }
+      );
 
-        results.push({ postId, status: 'sent' });
-        console.log(`[webhook] Sent post ${postId}`);
-
-      } catch (postError) {
-        // One post failing must not stop the loop
-        const msg = postError instanceof Error ? postError.message : String(postError);
-        console.error(`[webhook] Error on post ${postId}:`, msg);
-        results.push({ postId, status: 'error', error: msg });
+      if (!telegramRes.ok) {
+        const tgErr = await telegramRes.json();
+        throw new Error(`Telegram error: ${JSON.stringify(tgErr)}`);
       }
+
+      return { postId, status: 'sent' };
     }
+
+    // Promise.allSettled — one failure never blocks the others
+    const settled = await Promise.allSettled(topPosts.map(processPost));
+
+    const results = settled.map((result, i) => {
+      const postId = topPosts[i].id!;
+      if (result.status === 'fulfilled') {
+        console.log(`[webhook] Sent post ${postId}`);
+        return result.value;
+      }
+      const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      console.error(`[webhook] Failed post ${postId}:`, msg);
+      return { postId, status: 'error', error: msg };
+    });
 
     return NextResponse.json({ status: 'Done', results }, { status: 200 });
 
