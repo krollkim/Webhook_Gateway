@@ -1,11 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
-const TOP_N = 6; // one slot per creator — parallel calls handle the timeout
+const TOP_PER_CREATOR = 5; // up to 5 best posts per creator → max 30 total (5 × 6 creators)
 
-// Only these accounts are allowed through — prevents unrelated creators
-// scraped via tagging/related content from stealing slots
 const CREATOR_WHITELIST = new Set([
   'keanu.visuals',
   'aristidebenoist',
@@ -23,9 +19,9 @@ interface ApifyItem {
   likesCount?:    number;
   commentsCount?: number;
   ownerUsername?: string;
-  displayUrl?:    string;   // main image / video thumbnail
-  images?:        string[]; // carousel frames
-  videoUrl?:      string;   // reel URL (thumbnail used for vision, not the video itself)
+  displayUrl?:    string;
+  images?:        string[];
+  videoUrl?:      string;
 }
 
 function isValidItem(item: ApifyItem): boolean {
@@ -38,119 +34,24 @@ function isValidItem(item: ApifyItem): boolean {
   );
 }
 
-function buildNanoBananaPrompt(caption: string, likes: number, comments: number): string {
-  return `
-אתה יועץ אסטרטגי בכיר של Smiley Solution — סטודיו לפיתוח מוצרים דיגיטליים.
-אתה לא מתאר פיצ'רים. אתה מתרגם החלטות טכניות ועיצוביות לשפה של תוצאות עסקיות.
-
-הקהל שלך: מנכ"לים ומייסדים שמודדים הצלחה ב-ROI, retention ו-time-to-value.
-הם לא רוצים לדעת מה בנית — הם רוצים להבין למה זה משנה.
-
-הטון: יועץ בכיר שמדבר עם שווה. חד, מדויק, ללא מילים מיותרות.
-אסור: סיסמאות שיווקיות, רשימות פיצ'רים, תיאורי "מה אנחנו בונים".
-חובה: תובנה אסטרטגית, השלכה עסקית, סמכות של מי שכבר פתר את הבעיה.
-
----
-
-שלושה עקרונות שיעצבו את הפוסט. אל תציין אותם — תן להם לעצב את הלוגיקה:
-
-1. ROI — כל החלטת עיצוב או טכנולוגיה היא החלטה עסקית.
-   מוצר דיגיטלי שנבנה נכון בונה אמון לפני שנקראת מילה אחת,
-   מקצר את הדרך להמרה, ויוצר engagement שמצטבר לאורך זמן.
-
-2. TTM / TTV — בהירות בהתחלה = מסירה מהירה בלי קיצורי דרך.
-   הדרך הנכונה לקצר time-to-market היא לא לחתוך בפינות —
-   אלא להגיע לבהירות מלאה לפני שכותבים שורת קוד אחת.
-
-3. ה-למה מעל ה-איך — לעולם אל תזכיר כלים, שפות או טכנולוגיות.
-   הסבר למה ההחלטה הנכונה יוצרת מערכת שמחזיקה תחת לחץ,
-   גדלה עם העסק, וזוכה באמון המשתמשים.
-
----
-
-ניתחת פוסט בעל engagement גבוה (${likes} לייקים, ${comments} תגובות).
-חלץ את הרעיון המרכזי וכתב ממנו פוסט בעברית עבור Smiley Solution.
-
-המבנה המדויק:
-
-[כותרת]
-שורה אחת. הצהרה קונספטואלית. ללא סימן שאלה, ללא קריאה.
-תן שם לרעיון — לא לתוכן, לא לכלי, לא לפיצ'ר.
-
-[פסקה 1]
-פרש את התובנה דרך עדשת ה-ROI. מה הפוסט הזה אומר על האופן שבו
-עסקים רציניים בונים אמון ומניעים תוצאות דרך הנוכחות הדיגיטלית שלהם?
-
-[פסקה 2]
-חבר ל-TTM/TTV ול-למה. כיצד קבלת ההחלטה הנכונה מהרגע הראשון
-מקצרת את ה-time-to-value ויוצרת מוצר שמחזיק תחת לחץ?
-דבר כשותף שכבר מיפה את הדרך — לא כמפתח שמסביר תהליך.
-
-[חתימה]
-משפט סיום אחד. מאופק. ללא CTA.
-שיישמע כמו משהו שמייסד אומר למייסד אחר — לא סלוגן.
-דוגמה לקצב (אל תעתיק): "זה הסטנדרט שאנחנו בונים לפיו."
-
-#עיצוב_דיגיטלי #smileysolution #ux #מוצר_דיגיטלי
-
----
-
-קפטשן המקור:
-"${caption}"
-
-כללים:
-- עברית בלבד
-- 100–150 מילים, לא כולל hashtags
-- ללא רשימות, ללא תבליטים
-- ללא אזכור של כלים, שפות או טכנולוגיות
-- פלט: הפוסט הסופי בלבד — ללא כותרות, ללא הסברים, ללא markdown
-
----
-
-לאחר הפוסט, הוסף שורה בדיוק כך: ---BRIEF---
-ואז כתוב Brief ויז'ואל קצר בעברית — כיצד לבנות את הפוסט הזה עבור Smiley Solution לפי מה שאתה רואה בתמונות:
-- אם קרוסלה: תאר כל פריים בשורה נפרדת (פריים 1: ..., פריים 2: ...)
-- אם וידאו/ריל: תאר 2–3 רגעי מפתח (שניות 0–3: ..., שניות 3–10: ...)
-- אם תמונה בודדת: תאר את הקומפוזיציה ומה להדגיש
-ללא markdown, ללא bullets. עד 80 מילים.
-  `.trim();
-}
-
 export async function POST(req: Request) {
-  // Env validation
-  const apifyToken      = process.env.APIFY_TOKEN;
-  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-  const botToken        = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId          = process.env.TELEGRAM_CHAT_ID;
+  const apifyToken = process.env.APIFY_TOKEN;
 
-  const missingVars = [
-    !apifyToken      && 'APIFY_TOKEN',
-    !anthropicApiKey && 'ANTHROPIC_API_KEY',
-    !botToken        && 'TELEGRAM_BOT_TOKEN',
-    !chatId          && 'TELEGRAM_CHAT_ID',
-  ].filter(Boolean);
-
-  if (missingVars.length > 0) {
-    const msg = `Missing env vars: ${missingVars.join(', ')}`;
-    console.error('[webhook] ' + msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  if (!apifyToken) {
+    return NextResponse.json({ error: 'Missing APIFY_TOKEN' }, { status: 500 });
   }
 
   let step = 'parse_body';
   try {
-    // 1. Parse Apify webhook body
     const body      = await req.json();
     const datasetId = body.resource?.defaultDatasetId;
 
     if (!datasetId) {
       console.error('[webhook] Missing datasetId. Payload:', JSON.stringify(body));
-      return NextResponse.json(
-        { error: 'No dataset ID found', receivedPayload: body },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No dataset ID found', receivedPayload: body }, { status: 400 });
     }
 
-    // 2. Fetch items from Apify
+    // Fetch items from Apify
     step = 'apify_fetch';
     const apifyResponse = await fetch(
       `https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyToken}`
@@ -160,148 +61,65 @@ export async function POST(req: Request) {
     }
     const rawItems: ApifyItem[] = await apifyResponse.json();
 
-    // 3. Filter → best post per creator → top N across creators
+    // Filter → group by creator → top 5 per creator → flatten
     step = 'filter_and_rank';
     const validItems = rawItems.filter(isValidItem);
 
-    // Group by creator, keep only their single best post by engagement
-    const byCreator = new Map<string, ApifyItem>();
+    const byCreator = new Map<string, ApifyItem[]>();
     for (const item of validItems) {
       const creator = item.ownerUsername || 'unknown';
-      const existing = byCreator.get(creator);
-      const itemEngagement = (item.likesCount || 0) + (item.commentsCount || 0);
-      const existingEngagement = existing
-        ? (existing.likesCount || 0) + (existing.commentsCount || 0)
-        : -1;
-      if (itemEngagement > existingEngagement) {
-        byCreator.set(creator, item);
-      }
+      if (!byCreator.has(creator)) byCreator.set(creator, []);
+      byCreator.get(creator)!.push(item);
     }
 
-    // Sort the per-creator winners by engagement, take top N
-    const topPosts = [...byCreator.values()]
-      .sort((a, b) => {
+    const topPosts: ApifyItem[] = [];
+    for (const [, posts] of byCreator) {
+      const sorted = posts.sort((a, b) => {
         const eA = (a.likesCount || 0) + (a.commentsCount || 0);
         const eB = (b.likesCount || 0) + (b.commentsCount || 0);
         return eB - eA;
-      })
-      .slice(0, TOP_N);
+      });
+      topPosts.push(...sorted.slice(0, TOP_PER_CREATOR));
+    }
 
-    console.log(`[webhook] ${rawItems.length} raw → ${validItems.length} valid → ${byCreator.size} creators → ${topPosts.length} selected`);
+    console.log(`[webhook] ${rawItems.length} raw → ${validItems.length} valid → ${byCreator.size} creators → ${topPosts.length} selected (top ${TOP_PER_CREATOR} per creator)`);
 
     if (topPosts.length === 0) {
       return NextResponse.json({ status: 'No valid items after filtering' }, { status: 200 });
     }
 
-    // 4. Process all posts in parallel — Claude + Telegram fire simultaneously
-    step = 'process_posts';
-    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+    // Fire one request per post to /api/process-post — each gets its own 30s budget
+    step = 'fire_sub_requests';
+    const origin     = new URL(req.url).origin;
+    const processUrl = `${origin}/api/process-post`;
 
-    async function processPost(post: ApifyItem): Promise<{ postId: string; status: string; error?: string }> {
-      const postId   = post.id!;
-      const postUrl  = post.url!;
-      const likes    = post.likesCount    || 0;
-      const comments = post.commentsCount || 0;
-      const caption  = post.caption       || 'No caption';
-
-      // Collect image URLs for vision (carousel → first 3 frames, video → thumbnail, image → displayUrl)
-      const imageUrls: string[] = [];
-      if (post.images && post.images.length > 0) {
-        imageUrls.push(...post.images.slice(0, 3));
-      } else if (post.displayUrl) {
-        imageUrls.push(post.displayUrl);
-      }
-
-      const imageContent = imageUrls.map(url => ({
-        type:   'image' as const,
-        source: { type: 'url' as const, url },
-      }));
-
-      let fullText: string;
-      try {
-        const message = await anthropic.messages.create({
-          model:      'claude-sonnet-4-5',
-          max_tokens: 900,
-          messages:   [{
-            role:    'user',
-            content: [
-              ...imageContent,
-              { type: 'text', text: buildNanoBananaPrompt(caption, likes, comments) },
-            ],
-          }],
-        });
-        fullText = (message.content[0] as { type: string; text: string }).text;
-      } catch {
-        // Image fetch failed — fall back to text-only
-        const message = await anthropic.messages.create({
-          model:      'claude-sonnet-4-5',
-          max_tokens: 900,
-          messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
-        });
-        fullText = (message.content[0] as { type: string; text: string }).text;
-      }
-
-      const [postText, briefText] = fullText.split('---BRIEF---');
-      const formattedPost = postText.trim();
-      const visualBrief   = briefText?.trim() ?? '';
-
-      const telegramText = visualBrief
-        ? `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🎨 *Brief ויז'ואל:*\n${visualBrief}\n\n🔗 [Original Post](${postUrl})`
-        : `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`;
-
-      const telegramRes = await fetch(
-        `https://api.telegram.org/bot${botToken}/sendMessage`,
-        {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            chat_id:    chatId,
-            text:       telegramText,
-            parse_mode: 'Markdown',
-          }),
-        }
-      );
-
-      if (!telegramRes.ok) {
-        const tgErr = await telegramRes.json();
-        throw new Error(`Telegram error: ${JSON.stringify(tgErr)}`);
-      }
-
-      return { postId, status: 'sent' };
-    }
-
-    // Promise.allSettled — one failure never blocks the others
-    const settled = await Promise.allSettled(topPosts.map(processPost));
-
-    const results = settled.map((result, i) => {
-      const postId = topPosts[i].id!;
-      if (result.status === 'fulfilled') {
-        console.log(`[webhook] Sent post ${postId}`);
-        return result.value;
-      }
-      const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      console.error(`[webhook] Failed post ${postId}:`, msg);
-      return { postId, status: 'error', error: msg };
+    topPosts.forEach(post => {
+      fetch(processUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(post),
+      }).catch(err => console.error(`[webhook] sub-request fire error for ${post.id}:`, err));
     });
 
-    return NextResponse.json({ status: 'Done', results }, { status: 200 });
+    // Brief pause to ensure requests are dispatched before Lambda freezes
+    await new Promise(r => setTimeout(r, 200));
+
+    return NextResponse.json({ status: 'Triggered', count: topPosts.length }, { status: 200 });
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[webhook] FAILED at step="${step}":`, error);
-    return NextResponse.json(
-      { error: 'Internal Server Error', step, detail: msg },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error', step, detail: msg }, { status: 500 });
   }
 }
+
 export async function GET() {
-  return new Response(JSON.stringify({ 
-    status: "success", 
-    message: 'API "listener" is running successfully',
-    timestamp: new Date().toISOString()
+  return new Response(JSON.stringify({
+    status:    'success',
+    message:   'API "listener" is running successfully',
+    timestamp: new Date().toISOString(),
   }), {
-    status: 200,
+    status:  200,
     headers: { 'Content-Type': 'application/json' },
   });
 }
