@@ -23,6 +23,9 @@ interface ApifyItem {
   likesCount?:    number;
   commentsCount?: number;
   ownerUsername?: string;
+  displayUrl?:    string;   // main image / video thumbnail
+  images?:        string[]; // carousel frames
+  videoUrl?:      string;   // reel URL (thumbnail used for vision, not the video itself)
 }
 
 function isValidItem(item: ApifyItem): boolean {
@@ -101,6 +104,15 @@ function buildNanoBananaPrompt(caption: string, likes: number, comments: number)
 - ללא רשימות, ללא תבליטים
 - ללא אזכור של כלים, שפות או טכנולוגיות
 - פלט: הפוסט הסופי בלבד — ללא כותרות, ללא הסברים, ללא markdown
+
+---
+
+לאחר הפוסט, הוסף שורה בדיוק כך: ---BRIEF---
+ואז כתוב Brief ויז'ואל קצר בעברית — כיצד לבנות את הפוסט הזה עבור Smiley Solution לפי מה שאתה רואה בתמונות:
+- אם קרוסלה: תאר כל פריים בשורה נפרדת (פריים 1: ..., פריים 2: ...)
+- אם וידאו/ריל: תאר 2–3 רגעי מפתח (שניות 0–3: ..., שניות 3–10: ...)
+- אם תמונה בודדת: תאר את הקומפוזיציה ומה להדגיש
+ללא markdown, ללא bullets. עד 80 מילים.
   `.trim();
 }
 
@@ -192,12 +204,50 @@ export async function POST(req: Request) {
       const comments = post.commentsCount || 0;
       const caption  = post.caption       || 'No caption';
 
-      const message = await anthropic.messages.create({
-        model:      'claude-sonnet-4-5',
-        max_tokens: 512,
-        messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
-      });
-      const formattedPost = (message.content[0] as { type: string; text: string }).text;
+      // Collect image URLs for vision (carousel → first 3 frames, video → thumbnail, image → displayUrl)
+      const imageUrls: string[] = [];
+      if (post.images && post.images.length > 0) {
+        imageUrls.push(...post.images.slice(0, 3));
+      } else if (post.displayUrl) {
+        imageUrls.push(post.displayUrl);
+      }
+
+      const imageContent = imageUrls.map(url => ({
+        type:   'image' as const,
+        source: { type: 'url' as const, url },
+      }));
+
+      let fullText: string;
+      try {
+        const message = await anthropic.messages.create({
+          model:      'claude-sonnet-4-5',
+          max_tokens: 900,
+          messages:   [{
+            role:    'user',
+            content: [
+              ...imageContent,
+              { type: 'text', text: buildNanoBananaPrompt(caption, likes, comments) },
+            ],
+          }],
+        });
+        fullText = (message.content[0] as { type: string; text: string }).text;
+      } catch {
+        // Image fetch failed — fall back to text-only
+        const message = await anthropic.messages.create({
+          model:      'claude-sonnet-4-5',
+          max_tokens: 900,
+          messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
+        });
+        fullText = (message.content[0] as { type: string; text: string }).text;
+      }
+
+      const [postText, briefText] = fullText.split('---BRIEF---');
+      const formattedPost = postText.trim();
+      const visualBrief   = briefText?.trim() ?? '';
+
+      const telegramText = visualBrief
+        ? `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🎨 *Brief ויז'ואל:*\n${visualBrief}\n\n🔗 [Original Post](${postUrl})`
+        : `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`;
 
       const telegramRes = await fetch(
         `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -206,7 +256,7 @@ export async function POST(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
             chat_id:    chatId,
-            text:       `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`,
+            text:       telegramText,
             parse_mode: 'Markdown',
           }),
         }
