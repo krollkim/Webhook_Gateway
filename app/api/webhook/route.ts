@@ -4,6 +4,17 @@ import { NextResponse } from 'next/server';
 
 const TOP_N = 6; // one slot per creator — parallel calls handle the timeout
 
+// Only these accounts are allowed through — prevents unrelated creators
+// scraped via tagging/related content from stealing slots
+const CREATOR_WHITELIST = new Set([
+  'keanu.visuals',
+  'aristidebenoist',
+  'akella_',
+  'lina.tech.flat',
+  'sebintel',
+  'timkoda_',
+]);
+
 interface ApifyItem {
   id?:            string;
   url?:           string;
@@ -17,9 +28,10 @@ interface ApifyItem {
 function isValidItem(item: ApifyItem): boolean {
   return (
     (item.type === 'Video' || item.type === 'Image' || item.type === 'Video/Image') &&
-    !!item.id      && item.id      !== 'undefined' &&
-    !!item.url     && item.url     !== 'undefined' &&
-    !!item.caption && item.caption.length >= 20   // skip posts with no text to analyze
+    !!item.id           && item.id      !== 'undefined' &&
+    !!item.url          && item.url     !== 'undefined' &&
+    !!item.caption      && item.caption.length >= 20 &&
+    !!item.ownerUsername && CREATOR_WHITELIST.has(item.ownerUsername)
   );
 }
 
@@ -232,4 +244,14 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+export async function GET() {
+  return new Response(JSON.stringify({ 
+    status: "success", 
+    message: 'API "listener" is running successfully',
+    timestamp: new Date().toISOString()
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
