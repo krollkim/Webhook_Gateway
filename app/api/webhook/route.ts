@@ -2,7 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 
-const TOP_N = 3; // keep low — parallel Claude calls must finish within Netlify timeout
+const TOP_N = 6; // one slot per creator — parallel calls handle the timeout
 
 interface ApifyItem {
   id?:            string;
@@ -17,85 +17,78 @@ interface ApifyItem {
 function isValidItem(item: ApifyItem): boolean {
   return (
     (item.type === 'Video' || item.type === 'Image' || item.type === 'Video/Image') &&
-    !!item.id   && item.id  !== 'undefined' &&
-    !!item.url  && item.url !== 'undefined'
+    !!item.id      && item.id      !== 'undefined' &&
+    !!item.url     && item.url     !== 'undefined' &&
+    !!item.caption && item.caption.length >= 20   // skip posts with no text to analyze
   );
 }
 
 function buildNanoBananaPrompt(caption: string, likes: number, comments: number): string {
   return `
-You are the content voice of Smiley Solution — a tech studio that builds digital products
-people love and systems that hold under pressure.
+אתה יועץ אסטרטגי בכיר של Smiley Solution — סטודיו לפיתוח מוצרים דיגיטליים.
+אתה לא מתאר פיצ'רים. אתה מתרגם החלטות טכניות ועיצוביות לשפה של תוצאות עסקיות.
 
-Studio philosophy: "We don't start with requirements. We start with understanding."
-Core values: Clarity, Craft, Excellence, Precision, Performance, Partnership.
+הקהל שלך: מנכ"לים ומייסדים שמודדים הצלחה ב-ROI, retention ו-time-to-value.
+הם לא רוצים לדעת מה בנית — הם רוצים להבין למה זה משנה.
 
-Your audience: founders and business leaders who are responsible for outcomes — revenue,
-trust, market position. They don't want to hear about tools or frameworks.
-They want to understand why decisions compound into results.
-
-Your tone: a trusted partner, not a vendor. Direct, grounded, and clear.
-You share insight the way a co-founder would — without selling, without jargon.
+הטון: יועץ בכיר שמדבר עם שווה. חד, מדויק, ללא מילים מיותרות.
+אסור: סיסמאות שיווקיות, רשימות פיצ'רים, תיאורי "מה אנחנו בונים".
+חובה: תובנה אסטרטגית, השלכה עסקית, סמכות של מי שכבר פתר את הבעיה.
 
 ---
 
-Three pillars to weave into every post. Do not list them. Let them shape the argument:
+שלושה עקרונות שיעצבו את הפוסט. אל תציין אותם — תן להם לעצב את הלוגיקה:
 
-1. ROI — Visual excellence is not aesthetic preference. It is a business decision.
-   Great digital products build trust before a single word is read, shorten the path
-   to conversion, and drive engagement that compounds over time.
-   Connect the insight to outcomes: trust, retention, revenue.
+1. ROI — כל החלטת עיצוב או טכנולוגיה היא החלטה עסקית.
+   מוצר דיגיטלי שנבנה נכון בונה אמון לפני שנקראת מילה אחת,
+   מקצר את הדרך להמרה, ויוצר engagement שמצטבר לאורך זמן.
 
-2. TTM / TTV — Speed and craft are not opposites. The studio delivers without cutting
-   corners because the process — Discovery → Architecture → Engineering → Deployment —
-   is already optimised. Faster time-to-market and faster time-to-value are the result
-   of clarity up front, not shortcuts at the end.
+2. TTM / TTV — בהירות בהתחלה = מסירה מהירה בלי קיצורי דרך.
+   הדרך הנכונה לקצר time-to-market היא לא לחתוך בפינות —
+   אלא להגיע לבהירות מלאה לפני שכותבים שורת קוד אחת.
 
-3. The 'Why' over the 'How' — Never name tools, stacks, or frameworks in the post.
-   Explain why a technological decision creates a system that holds under pressure,
-   scales with the business, and earns the trust of its users. The 'what' is invisible.
-   The 'why' is everything.
+3. ה-למה מעל ה-איך — לעולם אל תזכיר כלים, שפות או טכנולוגיות.
+   הסבר למה ההחלטה הנכונה יוצרת מערכת שמחזיקה תחת לחץ,
+   גדלה עם העסק, וזוכה באמון המשתמשים.
 
 ---
 
-You have been given a high-engagement social media post (${likes} likes, ${comments} comments).
-Extract the core idea from the caption and rewrite it as a Smiley Solution post in English.
+ניתחת פוסט בעל engagement גבוה (${likes} לייקים, ${comments} תגובות).
+חלץ את הרעיון המרכזי וכתב ממנו פוסט בעברית עבור Smiley Solution.
 
-Use this exact structure:
+המבנה המדויק:
 
-[Headline]
-One declarative line. Conceptual and precise. No question marks. No exclamation points.
-Name the idea — not the content, not the tool, not the feature.
+[כותרת]
+שורה אחת. הצהרה קונספטואלית. ללא סימן שאלה, ללא קריאה.
+תן שם לרעיון — לא לתוכן, לא לכלי, לא לפיצ'ר.
 
-[Body — paragraph 1]
-Reframe the insight through the ROI pillar. What does this signal about how ambitious
-businesses build trust and drive results through their digital presence?
-Use the studio's vocabulary: visual fidelity, clarity, craft, strategic alignment,
-systems that generate, built to the highest standard.
+[פסקה 1]
+פרש את התובנה דרך עדשת ה-ROI. מה הפוסט הזה אומר על האופן שבו
+עסקים רציניים בונים אמון ומניעים תוצאות דרך הנוכחות הדיגיטלית שלהם?
 
-[Body — paragraph 2]
-Connect to TTM/TTV and the 'Why'. How does getting this right — from the first decision —
-compress time-to-value and create something that holds under pressure?
-Speak as a partner who has already mapped this path, not a developer explaining a process.
+[פסקה 2]
+חבר ל-TTM/TTV ול-למה. כיצד קבלת ההחלטה הנכונה מהרגע הראשון
+מקצרת את ה-time-to-value ויוצרת מוצר שמחזיק תחת לחץ?
+דבר כשותף שכבר מיפה את הדרך — לא כמפתח שמסביר תהליך.
 
-[Signature]
-One closing sentence. Understated. No calls-to-action.
-It should feel like something a founder says to another founder — not a tagline.
-Cadence example (do not copy verbatim): "This is the standard we build to."
+[חתימה]
+משפט סיום אחד. מאופק. ללא CTA.
+שיישמע כמו משהו שמייסד אומר למייסד אחר — לא סלוגן.
+דוגמה לקצב (אל תעתיק): "זה הסטנדרט שאנחנו בונים לפיו."
 
-#hashtag1 #hashtag2 #hashtag3 #hashtag4
+#עיצוב_דיגיטלי #smileysolution #ux #מוצר_דיגיטלי
 
 ---
 
-Source post caption:
+קפטשן המקור:
 "${caption}"
 
-Rules:
-- English only
-- 130–190 words total, excluding hashtags
-- No bullet points, no numbered lists in the output
-- Do not reference tools, frameworks, or technical stack
-- Output only the final post — no labels, no commentary, no markdown headings
+כללים:
+- עברית בלבד
+- 100–150 מילים, לא כולל hashtags
+- ללא רשימות, ללא תבליטים
+- ללא אזכור של כלים, שפות או טכנולוגיות
+- פלט: הפוסט הסופי בלבד — ללא כותרות, ללא הסברים, ללא markdown
   `.trim();
 }
 
@@ -143,10 +136,26 @@ export async function POST(req: Request) {
     }
     const rawItems: ApifyItem[] = await apifyResponse.json();
 
-    // 3. Filter invalid items, sort by engagement, take top N
+    // 3. Filter → best post per creator → top N across creators
     step = 'filter_and_rank';
-    const topPosts = rawItems
-      .filter(isValidItem)
+    const validItems = rawItems.filter(isValidItem);
+
+    // Group by creator, keep only their single best post by engagement
+    const byCreator = new Map<string, ApifyItem>();
+    for (const item of validItems) {
+      const creator = item.ownerUsername || 'unknown';
+      const existing = byCreator.get(creator);
+      const itemEngagement = (item.likesCount || 0) + (item.commentsCount || 0);
+      const existingEngagement = existing
+        ? (existing.likesCount || 0) + (existing.commentsCount || 0)
+        : -1;
+      if (itemEngagement > existingEngagement) {
+        byCreator.set(creator, item);
+      }
+    }
+
+    // Sort the per-creator winners by engagement, take top N
+    const topPosts = [...byCreator.values()]
       .sort((a, b) => {
         const eA = (a.likesCount || 0) + (a.commentsCount || 0);
         const eB = (b.likesCount || 0) + (b.commentsCount || 0);
@@ -154,7 +163,7 @@ export async function POST(req: Request) {
       })
       .slice(0, TOP_N);
 
-    console.log(`[webhook] ${rawItems.length} raw → ${topPosts.length} valid top posts`);
+    console.log(`[webhook] ${rawItems.length} raw → ${validItems.length} valid → ${byCreator.size} creators → ${topPosts.length} selected`);
 
     if (topPosts.length === 0) {
       return NextResponse.json({ status: 'No valid items after filtering' }, { status: 200 });
