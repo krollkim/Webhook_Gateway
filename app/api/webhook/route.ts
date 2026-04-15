@@ -93,16 +93,14 @@ export async function POST(req: Request) {
     const origin     = new URL(req.url).origin;
     const processUrl = `${origin}/api/process-post`;
 
-    topPosts.forEach(post => {
+    for (const post of topPosts) {
       fetch(processUrl, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(post),
       }).catch(err => console.error(`[webhook] sub-request fire error for ${post.id}:`, err));
-    });
-
-    // Brief pause to ensure requests are dispatched before Lambda freezes
-    await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 500));
+    }
 
     return NextResponse.json({ status: 'Triggered', count: topPosts.length }, { status: 200 });
 
