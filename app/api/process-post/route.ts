@@ -16,87 +16,138 @@ interface ApifyItem {
 
 function buildNanoBananaPrompt(caption: string, likes: number, comments: number): string {
   return `
-אתה יועץ אסטרטגי בכיר של Smiley Solution — סטודיו לפיתוח מוצרים דיגיטליים.
-אתה לא מתאר פיצ'רים. אתה מתרגם החלטות טכניות ועיצוביות לשפה של תוצאות עסקיות.
+You are the senior content strategist for Smiley Solution — a premium digital product studio.
+You translate technical and design decisions into the language of business outcomes.
 
-הקהל שלך: מנכ"לים ומייסדים שמודדים הצלחה ב-ROI, retention ו-time-to-value.
-הם לא רוצים לדעת מה בנית — הם רוצים להבין למה זה משנה.
+Your audience: CEOs and founders who measure success in ROI, retention, and time-to-value.
+They don't want to know what you built — they want to understand why it matters.
 
-הטון: יועץ בכיר שמדבר עם שווה. חד, מדויק, ללא מילים מיותרות.
-אסור: סיסמאות שיווקיות, רשימות פיצ'רים, תיאורי "מה אנחנו בונים".
-חובה: תובנה אסטרטגית, השלכה עסקית, סמכות של מי שכבר פתר את הבעיה.
+Three strategic principles govern everything you write. Never state them explicitly — let them shape the logic:
 
----
+1. ROI — every design or technology decision is a business decision.
+   A digital product built correctly builds trust before a single word is read,
+   shortens the path to conversion, and creates engagement that compounds over time.
 
-שלושה עקרונות שיעצבו את הפוסט. אל תציין אותם — תן להם לעצב את הלוגיקה:
+2. TTM / TTV — clarity at the start equals fast delivery without shortcuts.
+   The right way to shorten time-to-market is not to cut corners —
+   it is to reach full clarity before writing a single line of code.
 
-1. ROI — כל החלטת עיצוב או טכנולוגיה היא החלטה עסקית.
-   מוצר דיגיטלי שנבנה נכון בונה אמון לפני שנקראת מילה אחת,
-   מקצר את הדרך להמרה, ויוצר engagement שמצטבר לאורך זמן.
+3. Why over How — never mention tools, languages, or technologies by name.
+   Explain why the right decision creates a system that holds under pressure,
+   scales with the business, and earns user trust.
 
-2. TTM / TTV — בהירות בהתחלה = מסירה מהירה בלי קיצורי דרך.
-   הדרך הנכונה לקצר time-to-market היא לא לחתוך בפינות —
-   אלא להגיע לבהירות מלאה לפני שכותבים שורת קוד אחת.
-
-3. ה-למה מעל ה-איך — לעולם אל תזכיר כלים, שפות או טכנולוגיות.
-   הסבר למה ההחלטה הנכונה יוצרת מערכת שמחזיקה תחת לחץ,
-   גדלה עם העסק, וזוכה באמון המשתמשים.
-
----
-
-ניתחת פוסט בעל engagement גבוה (${likes} לייקים, ${comments} תגובות).
-חלץ את הרעיון המרכזי וכתב ממנו פוסט בעברית עבור Smiley Solution.
-
-המבנה המדויק:
-
-[כותרת]
-שורה אחת. הצהרה קונספטואלית. ללא סימן שאלה, ללא קריאה.
-תן שם לרעיון — לא לתוכן, לא לכלי, לא לפיצ'ר.
-
-[פסקה 1]
-פרש את התובנה דרך עדשת ה-ROI. מה הפוסט הזה אומר על האופן שבו
-עסקים רציניים בונים אמון ומניעים תוצאות דרך הנוכחות הדיגיטלית שלהם?
-
-[פסקה 2]
-חבר ל-TTM/TTV ול-למה. כיצד קבלת ההחלטה הנכונה מהרגע הראשון
-מקצרת את ה-time-to-value ויוצרת מוצר שמחזיק תחת לחץ?
-דבר כשותף שכבר מיפה את הדרך — לא כמפתח שמסביר תהליך.
-
-[חתימה]
-משפט סיום אחד. מאופק. ללא CTA.
-שיישמע כמו משהו שמייסד אומר למייסד אחר — לא סלוגן.
-דוגמה לקצב (אל תעתיק): "זה הסטנדרט שאנחנו בונים לפיו."
-
-#עיצוב_דיגיטלי #smileysolution #ux #מוצר_דיגיטלי
+Forbidden in all output: marketing slogans, feature lists, "what we're building" descriptions,
+tool names, framework names, vague inspiration language.
+Required in all output: strategic insight, business consequence, the authority of someone
+who has already solved this problem.
 
 ---
 
-קפטשן המקור:
+Analyze this high-engagement post (${likes} likes, ${comments} comments) and extract its core strategic idea.
+Then produce THREE sections in the exact order below, each preceded by its exact delimiter line.
+
+Source caption:
 "${caption}"
 
-כללים:
-- עברית בלבד
-- 100–150 מילים, לא כולל hashtags
-- ללא רשימות, ללא תבליטים
-- ללא אזכור של כלים, שפות או טכנולוגיות
-- פלט: הפוסט הסופי בלבד — ללא כותרות, ללא הסברים, ללא markdown
+---FEED---
+Write a premium English Instagram feed caption for Smiley Solution.
+Style: Editorial Minimalism — think Awwwards, Stripe, Linear. Confident, sparse, no filler.
+Tone: a senior creative director addressing founders who have taste and measure everything.
+The copy must express a strategic insight or business consequence — not describe a visual or list steps.
+No slogans. No "we help you". No feature descriptions. Speak as a peer, not a vendor.
+Structure: one sharp conceptual headline, 2–3 lines of copy, then 3–4 relevant hashtags on the last line.
+Rules: English only. No bullet points. No markdown. 60–90 words excluding hashtags.
 
----
+---STORIES---
+Write an authentic Hebrew script for an Instagram Story for Smiley Solution.
+Style: direct, warm, conversational — like a sharp founder talking honestly to a peer.
+Tone: "talky" and real. Short sentences. No corporate language. Can include a question.
+The same strategic insight from the Feed should come through — but expressed like a real person,
+not a consultant. Human first, strategic underneath.
+Rules: Hebrew only. No bullet points. No markdown. 50–80 words.
 
-לאחר הפוסט, הוסף שורה בדיוק כך: ---BRIEF---
-ואז כתוב את הבאים בעברית:
+---BRIEF---
+Write in Hebrew. You are a senior tech studio lead evaluating this post for technical mastery and web potential.
 
-אתה מוביל סטודיו טק בכיר. הערך את הפוסט לפי שליטה טכנית ופוטנציאל ווב.
+First line — classification only, one of:
+🎨 Visual Inspiration — if the post is static graphic design (photo edit, branding, typography)
+⚡ CORE TECH — if the post shows complex motion, UI/UX interaction, or high-end web animations (GSAP style)
 
-שורה ראשונה — סיווג בלבד, אחת מהאפשרויות:
-🎨 Visual Inspiration — אם הפוסט הוא עיצוב גרפי סטטי (תמונה, עריכת צילום, מיתוג)
-⚡ CORE TECH — אם הפוסט מציג תנועה מורכבת, אינטראקציה UI/UX, או אנימציות ווב ברמה גבוהה (סגנון GSAP)
+If Visual Inspiration: briefly describe the composition and how the visual style could translate into design assets for Smiley Solution.
+If CORE TECH: focus on technical implementation — how you would build this effect in code, which libraries, and what is technically worth learning.
 
-אם Visual Inspiration: תאר בקצרה את הקומפוזיציה וכיצד ניתן לתרגם את הסגנון הויזואלי לנכסי עיצוב עבור Smiley Solution.
-אם CORE TECH: התמקד באופן יישום טכני — כיצד הייתה מממש את האפקט הזה בקוד (GSAP, scroll triggers, CSS, WebGL וכו'), אילו ספריות, ומה הייחוד הטכני שיש ללמוד מכאן.
-
-ללא markdown, ללא bullets. עד 80 מילים.
+No markdown. No bullets. Up to 80 words.
   `.trim();
+}
+
+interface DashboardContent {
+  title:             string;
+  source_url:        string;
+  raw_excerpt:       string;
+  feed_copy_en:      string;
+  stories_script_he: string;
+  client_persona:    string;
+  tags:              string[];
+  engagement: {
+    shares:     number;
+    comments:   number;
+    saves:      number;
+    trend_tags: string[];
+  };
+}
+
+async function sendToDashboard(contentData: DashboardContent): Promise<void> {
+  const dashboardUrl   = process.env.DASHBOARD_URL;
+  const webhookSecret  = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+  if (!dashboardUrl || !webhookSecret) {
+    console.warn('[Dashboard] Missing Env Vars — skipping push');
+    return;
+  }
+
+  const internalPayload = {
+    title:             contentData.title,
+    source_url:        contentData.source_url,
+    raw_excerpt:       contentData.raw_excerpt,
+    feed_copy_en:      contentData.feed_copy_en,
+    stories_script_he: contentData.stories_script_he,
+    client_persona:    contentData.client_persona,
+    tags:              contentData.tags || [],
+    engagement: {
+      shares:     contentData.engagement?.shares     || 0,
+      comments:   contentData.engagement?.comments   || 0,
+      saves:      contentData.engagement?.saves      || 0,
+      trend_tags: contentData.engagement?.trend_tags || [],
+    },
+  };
+
+  const payload = {
+    message: {
+      text: JSON.stringify(internalPayload),
+    },
+  };
+
+  try {
+    const res  = await fetch(`${dashboardUrl}/api/ingest/telegram`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':     'application/json',
+        'x-webhook-secret': webhookSecret,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      console.error('[Dashboard] Ingest failed status:', res.status, json);
+    } else {
+      console.log(`[Dashboard] Success! ID: ${json.id} | Mode: ${json.mode}`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[Dashboard] Connection error:', msg);
+  }
 }
 
 export async function POST(req: Request) {
@@ -149,7 +200,7 @@ export async function POST(req: Request) {
     try {
       const message = await anthropic.messages.create({
         model:      'claude-sonnet-4-5',
-        max_tokens: 900,
+        max_tokens: 1200,
         messages:   [{
           role:    'user',
           content: [
@@ -164,19 +215,27 @@ export async function POST(req: Request) {
       console.warn(`[process-post] Vision failed for ${postId}, retrying text-only`);
       const message = await anthropic.messages.create({
         model:      'claude-sonnet-4-5',
-        max_tokens: 900,
+        max_tokens: 1200,
         messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
       });
       fullText = (message.content[0] as { type: string; text: string }).text;
     }
 
-    const [postText, briefText] = fullText.split('---BRIEF---');
-    const formattedPost = postText.trim();
-    const visualBrief   = briefText?.trim() ?? '';
+    const [, afterFeed]    = fullText.split('---FEED---');
+    const [feedRaw, afterStories] = (afterFeed ?? '').split('---STORIES---');
+    const [storiesRaw, briefRaw]  = (afterStories ?? '').split('---BRIEF---');
 
-    const telegramText = visualBrief
-      ? `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🎨 *Brief ויז'ואל:*\n${visualBrief}\n\n🔗 [Original Post](${postUrl})`
-      : `📊 *${likes}L / ${comments}C*\n\n${formattedPost}\n\n🔗 [Original Post](${postUrl})`;
+    const feedCopyEn      = feedRaw?.trim()    ?? '';
+    const storiesScriptHe = storiesRaw?.trim() ?? '';
+    const visualBrief     = briefRaw?.trim()   ?? '';
+
+    const telegramText = [
+      `📊 *${likes}L / ${comments}C*`,
+      feedCopyEn      ? `\n📝 *Feed (EN):*\n${feedCopyEn}`           : '',
+      storiesScriptHe ? `\n🎙 *Stories (HE):*\n${storiesScriptHe}`   : '',
+      visualBrief     ? `\n🎨 *Brief ויז'ואל:*\n${visualBrief}`      : '',
+      `\n\n🔗 [Original Post](${postUrl})`,
+    ].join('\n');
 
     const telegramRes = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -197,6 +256,24 @@ export async function POST(req: Request) {
     }
 
     console.log(`[process-post] Sent post ${postId}`);
+
+    // Push to dashboard — fire and forget, never blocks the Telegram response
+    void sendToDashboard({
+      title:             feedCopyEn.split('\n')[0],
+      source_url:        postUrl,
+      raw_excerpt:       caption,
+      feed_copy_en:      feedCopyEn,
+      stories_script_he: storiesScriptHe,
+      client_persona:    '',
+      tags:              [],
+      engagement: {
+        shares:     0,
+        comments:   comments,
+        saves:      0,
+        trend_tags: [],
+      },
+    });
+
     return NextResponse.json({ postId, status: 'sent' }, { status: 200 });
 
   } catch (error) {
