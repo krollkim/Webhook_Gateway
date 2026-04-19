@@ -41,7 +41,7 @@ function isValidItem(item: ApifyItem): boolean {
   }
 
   return (
-    (item.type === 'GraphImage' || item.type === 'GraphSidecar' || item.type === 'GraphVideo') &&
+    (item.type === 'GraphImage' || item.type === 'GraphSidecar' || item.type === 'GraphVideo' || item.type === 'clips') &&
     !!item.id           && item.id      !== 'undefined' &&
     !!item.url          && item.url     !== 'undefined' &&
     !!item.caption      && item.caption.length >= 20 &&
@@ -101,6 +101,10 @@ export async function POST(req: Request) {
       throw new Error(`Apify responded ${apifyResponse.status}: ${await apifyResponse.text()}`);
     }
     const rawItems: ApifyItem[] = await apifyResponse.json();
+
+    // Diagnostic — log structure of first item + all unique type values seen
+    console.log('[webhook] Sample item (first raw):', JSON.stringify(rawItems[0] ?? null, null, 2));
+    console.log('[webhook] Unique types in dataset:', [...new Set(rawItems.map(i => i.type))]);
 
     // Deduplicate by post ID before any further processing
     const uniqueItems = Array.from(new Map(rawItems.map(item => [item.id, item])).values());
