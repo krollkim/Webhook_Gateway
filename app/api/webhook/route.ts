@@ -31,7 +31,7 @@ interface ApifyItem {
   timestamp?:     string; // ISO date string — used for 24h freshness filter
 }
 
-const FRESHNESS_HOURS = 24;
+const FRESHNESS_HOURS = 72; // 3 days — Apify may return posts up to a few days old
 
 function isValidItem(item: ApifyItem): boolean {
   // Freshness check — skip posts older than 24h if timestamp is present
@@ -41,7 +41,8 @@ function isValidItem(item: ApifyItem): boolean {
   }
 
   return (
-    (item.type === 'GraphImage' || item.type === 'GraphSidecar' || item.type === 'GraphVideo' || item.type === 'clips') &&
+    (item.type === 'Video' || item.type === 'Image' || item.type === 'Sidecar' ||
+     item.type === 'GraphImage' || item.type === 'GraphSidecar' || item.type === 'GraphVideo') &&
     !!item.id           && item.id      !== 'undefined' &&
     !!item.url          && item.url     !== 'undefined' &&
     !!item.caption      && item.caption.length >= 20 &&
