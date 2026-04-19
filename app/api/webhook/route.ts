@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 
-const TOP_PER_CREATOR = 5; // up to 5 best posts per creator → max 30 total (5 × 6 creators)
+const TOP_PER_CREATOR   = 5;  // up to 5 best posts per creator → max 55 total (5 × 11 creators)
+const DATASET_THRESHOLD = 10; // minimum unique posts expected — abort + alert if below
 
 const CREATOR_WHITELIST = new Set([
-  'keanu.visuals',
-  'aristidebenoist',
-  'akella_',
-  'lina.tech.flat',
+  'awwwards',
+  'splinetool',
+  'webflow',
+  'gsap_greensock',
+  'dribbble',
+  'developers_society',
+  'figma',
   'sebintel',
   'timkoda_',
+  'keanu.visuals',
+  'lina.tech.flat',
 ]);
 
 interface ApifyItem {
@@ -22,9 +28,18 @@ interface ApifyItem {
   displayUrl?:    string;
   images?:        string[];
   videoUrl?:      string;
+  timestamp?:     string; // ISO date string — used for 24h freshness filter
 }
 
+const FRESHNESS_HOURS = 24;
+
 function isValidItem(item: ApifyItem): boolean {
+  // Freshness check — skip posts older than 24h if timestamp is present
+  if (item.timestamp) {
+    const cutoff = new Date(Date.now() - FRESHNESS_HOURS * 60 * 60 * 1000);
+    if (new Date(item.timestamp) < cutoff) return false;
+  }
+
   return (
     (item.type === 'Video' || item.type === 'Image' || item.type === 'Video/Image') &&
     !!item.id           && item.id      !== 'undefined' &&
@@ -34,8 +49,34 @@ function isValidItem(item: ApifyItem): boolean {
   );
 }
 
+async function validateDataset(
+  count: number,
+  botToken: string | undefined,
+  chatId: string | undefined,
+): Promise<boolean> {
+  if (count >= DATASET_THRESHOLD) return true;
+
+  console.warn(`[webhook] Validation failed: only ${count} unique posts (threshold: ${DATASET_THRESHOLD})`);
+
+  if (botToken && chatId) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id: chatId,
+        text:    `⚠️ *Scraper Warning: Low data count received.*\nGot ${count} posts from Apify (threshold: ${DATASET_THRESHOLD}).\nCheck Apify actor — possible scraper failure or blocked accounts.`,
+        parse_mode: 'Markdown',
+      }),
+    }).catch(err => console.error('[webhook] Failed to send alert:', err));
+  }
+
+  return false;
+}
+
 export async function POST(req: Request) {
   const apifyToken = process.env.APIFY_TOKEN;
+  const botToken   = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId     = process.env.TELEGRAM_CHAT_ID;
 
   if (!apifyToken) {
     return NextResponse.json({ error: 'Missing APIFY_TOKEN' }, { status: 500 });
@@ -61,9 +102,22 @@ export async function POST(req: Request) {
     }
     const rawItems: ApifyItem[] = await apifyResponse.json();
 
+    // Deduplicate by post ID before any further processing
+    const uniqueItems = Array.from(new Map(rawItems.map(item => [item.id, item])).values());
+
+    // Validate dataset volume — abort and alert if below threshold
+    step = 'validate_dataset';
+    const isValid = await validateDataset(uniqueItems.length, botToken, chatId);
+    if (!isValid) {
+      return NextResponse.json(
+        { status: 'Aborted — low data count', received: uniqueItems.length, threshold: DATASET_THRESHOLD },
+        { status: 200 },
+      );
+    }
+
     // Filter → group by creator → top 5 per creator → flatten
     step = 'filter_and_rank';
-    const validItems = rawItems.filter(isValidItem);
+    const validItems = uniqueItems.filter(isValidItem);
 
     const byCreator = new Map<string, ApifyItem[]>();
     for (const item of validItems) {
@@ -82,7 +136,7 @@ export async function POST(req: Request) {
       topPosts.push(...sorted.slice(0, TOP_PER_CREATOR));
     }
 
-    console.log(`[webhook] ${rawItems.length} raw → ${validItems.length} valid → ${byCreator.size} creators → ${topPosts.length} selected (top ${TOP_PER_CREATOR} per creator)`);
+    console.log(`[webhook] ${rawItems.length} raw → ${uniqueItems.length} unique → ${validItems.length} valid → ${byCreator.size} creators → ${topPosts.length} selected (top ${TOP_PER_CREATOR} per creator)`);
 
     if (topPosts.length === 0) {
       return NextResponse.json({ status: 'No valid items after filtering' }, { status: 200 });
