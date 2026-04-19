@@ -213,43 +213,12 @@ export async function POST(req: Request) {
   try {
     const anthropic = new Anthropic({ apiKey: anthropicApiKey });
 
-    // Collect image URLs: carousel → first 3 frames, otherwise displayUrl
-    const imageUrls: string[] = [];
-    if (post.images && post.images.length > 0) {
-      imageUrls.push(...post.images.slice(0, 3));
-    } else if (post.displayUrl) {
-      imageUrls.push(post.displayUrl);
-    }
-
-    const imageContent = imageUrls.map(url => ({
-      type:   'image' as const,
-      source: { type: 'url' as const, url },
-    }));
-
-    let fullText: string;
-    try {
-      const message = await anthropic.messages.create({
-        model:      'claude-sonnet-4-5',
-        max_tokens: 1200,
-        messages:   [{
-          role:    'user',
-          content: [
-            ...imageContent,
-            { type: 'text', text: buildNanoBananaPrompt(caption, likes, comments) },
-          ],
-        }],
-      });
-      fullText = (message.content[0] as { type: string; text: string }).text;
-    } catch {
-      // Image URLs rejected — fall back to text-only
-      console.warn(`[process-post] Vision failed for ${postId}, retrying text-only`);
-      const message = await anthropic.messages.create({
-        model:      'claude-sonnet-4-5',
-        max_tokens: 1200,
-        messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
-      });
-      fullText = (message.content[0] as { type: string; text: string }).text;
-    }
+    const message = await anthropic.messages.create({
+      model:      'claude-sonnet-4-5',
+      max_tokens: 1200,
+      messages:   [{ role: 'user', content: buildNanoBananaPrompt(caption, likes, comments) }],
+    });
+    const fullText = (message.content[0] as { type: string; text: string }).text;
 
     const [, afterFeed]    = fullText.split('---FEED---');
     const [feedRaw, afterStories] = (afterFeed ?? '').split('---STORIES---');

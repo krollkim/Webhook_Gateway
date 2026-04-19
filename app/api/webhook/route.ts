@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const TOP_PER_CREATOR   = 5;  // up to 5 best posts per creator → max 55 total (5 × 11 creators)
+const TOP_PER_CREATOR   = 2;  // up to 2 best posts per creator → max 22 total (2 × 11 creators)
 const DATASET_THRESHOLD = 10; // minimum unique posts expected — abort + alert if below
 
 const CREATOR_WHITELIST = new Set([
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(post),
       }).catch(err => console.error(`[webhook] sub-request fire error for ${post.id}:`, err));
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 1200));
     }
 
     return NextResponse.json({ status: 'Triggered', count: topPosts.length }, { status: 200 });
