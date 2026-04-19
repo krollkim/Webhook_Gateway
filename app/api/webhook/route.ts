@@ -41,7 +41,7 @@ function isValidItem(item: ApifyItem): boolean {
   }
 
   return (
-    (item.type === 'Video' || item.type === 'Image' || item.type === 'Video/Image') &&
+    (item.type === 'GraphImage' || item.type === 'GraphSidecar' || item.type === 'GraphVideo') &&
     !!item.id           && item.id      !== 'undefined' &&
     !!item.url          && item.url     !== 'undefined' &&
     !!item.caption      && item.caption.length >= 20 &&
