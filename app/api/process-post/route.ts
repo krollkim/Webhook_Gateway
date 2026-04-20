@@ -154,6 +154,7 @@ async function sendToDashboard(contentData: DashboardContent): Promise<void> {
   const payload = {
     message: {
       text: JSON.stringify(internalPayload),
+      chat: { id: 0 },
     },
   };
 
@@ -161,8 +162,8 @@ async function sendToDashboard(contentData: DashboardContent): Promise<void> {
     const res  = await fetch(`${dashboardUrl}/api/ingest/telegram`, {
       method:  'POST',
       headers: {
-        'Content-Type':     'application/json',
-        'x-webhook-secret': webhookSecret,
+        'Content-Type':                    'application/json',
+        'x-telegram-bot-api-secret-token': webhookSecret,
       },
       body: JSON.stringify(payload),
     });
@@ -235,9 +236,9 @@ export async function POST(req: Request) {
       storiesScriptHe ? `\n\n🎙 *STORIES SCRIPT — copy-paste ready:*\n${storiesScriptHe}` : '',
     ].join('');
 
-    const telegramRes = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      {
+    // Fire Telegram and dashboard in parallel — dashboard errors never block Telegram
+    const [telegramOutcome] = await Promise.allSettled([
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -245,32 +246,32 @@ export async function POST(req: Request) {
           text:       telegramText,
           parse_mode: 'Markdown',
         }),
-      }
-    );
+      }),
+      sendToDashboard({
+        title:             feedCopyEn.split('\n')[0],
+        source_url:        postUrl,
+        raw_excerpt:       caption,
+        feed_copy_en:      feedCopyEn,
+        stories_script_he: storiesScriptHe,
+        client_persona:    '',
+        tags:              [],
+        engagement: {
+          shares:     0,
+          comments:   comments,
+          saves:      0,
+          trend_tags: [],
+        },
+      }),
+    ]);
 
+    if (telegramOutcome.status === 'rejected') throw telegramOutcome.reason;
+    const telegramRes = telegramOutcome.value;
     if (!telegramRes.ok) {
       const tgErr = await telegramRes.json();
       throw new Error(`Telegram error: ${JSON.stringify(tgErr)}`);
     }
 
     console.log(`[process-post] Sent post ${postId}`);
-
-    // Push to dashboard — fire and forget, never blocks the Telegram response
-    void sendToDashboard({
-      title:             feedCopyEn.split('\n')[0],
-      source_url:        postUrl,
-      raw_excerpt:       caption,
-      feed_copy_en:      feedCopyEn,
-      stories_script_he: storiesScriptHe,
-      client_persona:    '',
-      tags:              [],
-      engagement: {
-        shares:     0,
-        comments:   comments,
-        saves:      0,
-        trend_tags: [],
-      },
-    });
 
     return NextResponse.json({ postId, status: 'sent' }, { status: 200 });
 
